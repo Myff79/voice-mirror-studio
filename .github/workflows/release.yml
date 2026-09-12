@@ -13,7 +13,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: macos-13
+          - os: macos-latest
             label: macOS
             archive: Voice-Mirror-Studio-macOS.zip
           - os: windows-latest

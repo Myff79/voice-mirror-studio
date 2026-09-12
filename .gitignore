@@ -1,0 +1,6 @@
+.env
+student-settings.env
+runtime-events.jsonl
+.venv/
+__pycache__/
+*.pyc

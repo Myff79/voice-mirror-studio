@@ -1,4 +1,4 @@
-name: Build workshop downloads
+name: Publish Voice Mirror Studio for Mac + Windows
 
 on:
   workflow_dispatch:
@@ -8,6 +8,7 @@ permissions:
 
 jobs:
   build:
+    name: Create ${{ matrix.label }} app
     strategy:
       fail-fast: false
       matrix:
@@ -50,6 +51,7 @@ jobs:
           path: ${{ matrix.archive }}
 
   release:
+    name: Publish student downloads
     needs: build
     runs-on: ubuntu-latest
     steps:

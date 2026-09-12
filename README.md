@@ -9,6 +9,16 @@ Private keys and conversation transcripts are deliberately excluded from Git.
 
 ## Setup
 
+### Easiest: workshop download
+
+Open the repository's **Releases** page and download the macOS or Windows zip.
+Unzip it, then open `voice-mirror-studio` on macOS or
+`voice-mirror-studio.exe` on Windows. No Python or uv installation is needed.
+
+The first launch opens the local setup page in the default browser.
+
+### From source
+
 1. Install [uv](https://docs.astral.sh/uv/getting-started/installation/).
 2. Download or clone this repository.
 3. On macOS, double-click `Start Workshop Studio.command`.

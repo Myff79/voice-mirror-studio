@@ -1,0 +1,69 @@
+name: Build workshop downloads
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-13
+            label: macOS
+            archive: Voice-Mirror-Studio-macOS.zip
+          - os: windows-latest
+            label: Windows
+            archive: Voice-Mirror-Studio-Windows.zip
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.12"
+      - name: Build applications
+        shell: bash
+        run: |
+          uv sync
+          uv run --with pyinstaller pyinstaller --noconfirm --clean --onefile --name voice-agent --collect-all livekit --collect-all livekit_agents --collect-all livekit_plugins agent.py
+          uv run --with pyinstaller pyinstaller --noconfirm --clean --onefile --name voice-mirror-studio workshop_ui.py
+          mkdir package
+          cp dist/voice-agent* package/
+          cp dist/voice-mirror-studio* package/
+          cp -R web package/web
+          cp personality.txt package/personality.txt
+          cp student-settings.example.env package/student-settings.example.env
+          cp README.md package/README.md
+      - name: Create macOS download
+        if: runner.os == 'macOS'
+        run: ditto -c -k --sequesterRsrc --keepParent package "${{ matrix.archive }}"
+      - name: Create Windows download
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: Compress-Archive -Path package -DestinationPath "${{ matrix.archive }}"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.label }}
+          path: ${{ matrix.archive }}
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: downloads
+          merge-multiple: true
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: workshop-${{ github.run_number }}
+          name: Voice Mirror Studio workshop download
+          body: |
+            Download the file for your computer, unzip it, and open Voice Mirror Studio.
+
+            Your LiveKit and Gradium credentials stay in the extracted folder on your computer.
+          files: downloads/*.zip

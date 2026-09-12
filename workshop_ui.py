@@ -3,12 +3,14 @@ import json
 import os
 import signal
 import sys
+import threading
+import webbrowser
 from pathlib import Path
 
 from aiohttp import web
 
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(sys.executable).resolve().parent if getattr(sys, "frozen", False) else Path(__file__).resolve().parent
 SETTINGS_PATH = ROOT / "student-settings.env"
 PERSONALITY_PATH = ROOT / "personality.txt"
 EVENTS_PATH = ROOT / "runtime-events.jsonl"
@@ -31,10 +33,12 @@ class Studio:
             return
         EVENTS_PATH.write_text("", encoding="utf-8")
         self.last_error = ""
+        if getattr(sys, "frozen", False):
+            agent_command = [str(ROOT / ("voice-agent.exe" if os.name == "nt" else "voice-agent")), "console"]
+        else:
+            agent_command = [sys.executable, "agent.py", "console"]
         self.process = await asyncio.create_subprocess_exec(
-            sys.executable,
-            "agent.py",
-            "console",
+            *agent_command,
             cwd=ROOT,
             stdin=asyncio.subprocess.DEVNULL,
             stdout=asyncio.subprocess.PIPE,
@@ -189,4 +193,6 @@ app.on_cleanup.append(cleanup)
 
 
 if __name__ == "__main__":
+    if getattr(sys, "frozen", False):
+        threading.Timer(1.2, lambda: webbrowser.open("http://127.0.0.1:8765")).start()
     web.run_app(app, host="127.0.0.1", port=int(os.getenv("WORKSHOP_UI_PORT", "8765")))

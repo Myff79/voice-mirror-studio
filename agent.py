@@ -1,5 +1,6 @@
 import os
 import json
+import sys
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -8,11 +9,12 @@ from livekit.agents import Agent, AgentServer, AgentSession, inference
 from livekit.plugins import gradium
 
 
-load_dotenv("student-settings.env")
+APP_ROOT = Path(sys.executable).resolve().parent if getattr(sys, "frozen", False) else Path(__file__).resolve().parent
+load_dotenv(APP_ROOT / "student-settings.env")
 
 
 def load_personality() -> str:
-    return Path("personality.txt").read_text(encoding="utf-8").strip()
+    return (APP_ROOT / "personality.txt").read_text(encoding="utf-8").strip()
 
 
 def record_conversation_item(event) -> None:
@@ -23,7 +25,7 @@ def record_conversation_item(event) -> None:
     if not text:
         return
     payload = {"role": item.role, "text": text, "created_at": event.created_at}
-    with Path("runtime-events.jsonl").open("a", encoding="utf-8") as events_file:
+    with (APP_ROOT / "runtime-events.jsonl").open("a", encoding="utf-8") as events_file:
         events_file.write(json.dumps(payload, ensure_ascii=False) + "\n")
 
 

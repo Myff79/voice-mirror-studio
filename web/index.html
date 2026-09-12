@@ -4,6 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Voice Mirror Studio</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%23090b09'/%3E%3Cpath d='M19 21v22M27 14v36M35 22v20M43 17v30' stroke='%23c8ff3d' stroke-width='5' stroke-linecap='round'/%3E%3C/svg%3E">
   <style>
     :root {
       color-scheme: dark;
@@ -65,10 +66,20 @@
     .message small { display:block; opacity:.65; font-size:.72rem; margin-bottom:4px; text-transform:uppercase; letter-spacing:.08em; }
     .error { display:none; margin-top:12px; color:var(--danger); }
     .error.show { display:block; }
+    .setup { margin-bottom: 18px; }
+    .setup[hidden] { display: none; }
+    .setup-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; }
+    .setup-grid .wide { grid-column:1/-1; }
+    .setup-note { color:var(--muted); margin:0 0 18px; max-width:760px; }
+    .setup-actions { display:flex; align-items:center; gap:14px; margin-top:18px; }
+    #saveSetup { background:var(--violet); color:white; }
+    .secret-note { color:var(--muted); font-size:.82rem; }
     @media (max-width: 860px) {
       .shell { padding: 18px; }
       header { align-items: start; flex-direction: column; }
       .workspace { grid-template-columns: 1fr; }
+      .setup-grid { grid-template-columns:1fr; }
+      .setup-grid .wide { grid-column:auto; }
       .transcript { min-height: 380px; }
     }
   </style>
@@ -82,6 +93,22 @@
       </div>
       <div class="status"><span id="dot" class="dot"></span><span id="statusText">Ready to configure</span></div>
     </header>
+
+    <section id="setup" class="panel setup" hidden>
+      <div class="panel-head"><h2>Connect your accounts</h2><span class="eyebrow">One-time setup</span></div>
+      <div class="panel-body">
+        <p class="setup-note">Use credentials from your own LiveKit and Gradium accounts. They are saved only in the private settings file on this computer and are never sent to GitHub.</p>
+        <div class="setup-grid">
+          <div class="field wide"><label for="livekitUrl">LiveKit project URL</label><input id="livekitUrl" placeholder="wss://…" autocomplete="off" spellcheck="false"></div>
+          <div class="field"><label for="livekitApiKey">LiveKit API key</label><input id="livekitApiKey" type="password" autocomplete="new-password"></div>
+          <div class="field"><label for="livekitApiSecret">LiveKit API secret</label><input id="livekitApiSecret" type="password" autocomplete="new-password"></div>
+          <div class="field"><label for="gradiumApiKey">Gradium API key</label><input id="gradiumApiKey" type="password" autocomplete="new-password"></div>
+          <div class="field"><label for="setupVoiceId">Gradium voice ID</label><input id="setupVoiceId" autocomplete="off" spellcheck="false"></div>
+        </div>
+        <div class="setup-actions"><button id="saveSetup">Save private setup</button><span class="secret-note">Secret values disappear from this page after saving.</span></div>
+        <p id="setupError" class="error" role="alert"></p>
+      </div>
+    </section>
 
     <section class="workspace">
       <article class="panel">
@@ -121,6 +148,7 @@
     const personality = $('#personality');
     const voiceId = $('#voiceId');
     let initialized = false;
+    let setupComplete = false;
 
     function renderMessages(messages) {
       const transcript = $('#transcript');
@@ -145,6 +173,8 @@
           voiceId.value = state.voiceId;
           initialized = true;
         }
+        setupComplete = state.gradiumReady && state.livekitReady;
+        $('#setup').hidden = setupComplete;
         $('#gradiumChip').classList.toggle('ok', state.gradiumReady);
         $('#gradiumChip').textContent = state.gradiumReady ? 'Gradium ready' : 'Gradium key missing';
         $('#livekitChip').classList.toggle('ok', state.livekitReady);
@@ -182,6 +212,30 @@
     $('#stop').addEventListener('click', async () => {
       try { await fetch('/api/stop', {method:'POST'}); await refresh(); }
       catch (error) { $('#error').textContent = error.message; $('#error').classList.add('show'); }
+    });
+    $('#saveSetup').addEventListener('click', async () => {
+      const error = $('#setupError');
+      error.classList.remove('show');
+      const response = await fetch('/api/setup', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({
+          livekitUrl:$('#livekitUrl').value,
+          livekitApiKey:$('#livekitApiKey').value,
+          livekitApiSecret:$('#livekitApiSecret').value,
+          gradiumApiKey:$('#gradiumApiKey').value,
+          voiceId:$('#setupVoiceId').value
+        })
+      });
+      if (!response.ok) {
+        error.textContent = await response.text();
+        error.classList.add('show');
+        return;
+      }
+      ['livekitApiKey','livekitApiSecret','gradiumApiKey'].forEach(id => $(`#${id}`).value = '');
+      voiceId.value = $('#setupVoiceId').value;
+      initialized = false;
+      await refresh();
     });
 
     refresh();

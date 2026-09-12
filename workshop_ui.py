@@ -13,6 +13,7 @@ SETTINGS_PATH = ROOT / "student-settings.env"
 PERSONALITY_PATH = ROOT / "personality.txt"
 EVENTS_PATH = ROOT / "runtime-events.jsonl"
 INDEX_PATH = ROOT / "web" / "index.html"
+SETTINGS_TEMPLATE_PATH = ROOT / "student-settings.example.env"
 
 
 class Studio:
@@ -67,7 +68,15 @@ class Studio:
 studio = Studio()
 
 
+def ensure_settings_file() -> None:
+    if not SETTINGS_PATH.exists():
+        SETTINGS_PATH.write_text(
+            SETTINGS_TEMPLATE_PATH.read_text(encoding="utf-8"), encoding="utf-8"
+        )
+
+
 def read_settings() -> dict[str, str]:
+    ensure_settings_file()
     values: dict[str, str] = {}
     for line in SETTINGS_PATH.read_text(encoding="utf-8").splitlines():
         if line and not line.startswith("#") and "=" in line:
@@ -77,6 +86,7 @@ def read_settings() -> dict[str, str]:
 
 
 def write_setting(name: str, value: str) -> None:
+    ensure_settings_file()
     lines = SETTINGS_PATH.read_text(encoding="utf-8").splitlines()
     prefix = f"{name}="
     updated = [prefix + value if line.startswith(prefix) else line for line in lines]
@@ -117,6 +127,26 @@ async def get_state(_: web.Request) -> web.Response:
     )
 
 
+async def save_setup(request: web.Request) -> web.Response:
+    if studio.running:
+        raise web.HTTPConflict(text="Stop the agent before changing its setup.")
+    data = await request.json()
+    required = {
+        "GRADIUM_API_KEY": str(data.get("gradiumApiKey", "")).strip(),
+        "GRADIUM_VOICE_ID": str(data.get("voiceId", "")).strip(),
+        "LIVEKIT_URL": str(data.get("livekitUrl", "")).strip(),
+        "LIVEKIT_API_KEY": str(data.get("livekitApiKey", "")).strip(),
+        "LIVEKIT_API_SECRET": str(data.get("livekitApiSecret", "")).strip(),
+    }
+    if not all(required.values()):
+        raise web.HTTPBadRequest(text="Complete all five account fields.")
+    if not required["LIVEKIT_URL"].startswith(("wss://", "ws://")):
+        raise web.HTTPBadRequest(text="The LiveKit URL must begin with wss://.")
+    for name, value in required.items():
+        write_setting(name, value)
+    return web.json_response({"saved": True})
+
+
 async def save_settings(request: web.Request) -> web.Response:
     if studio.running:
         raise web.HTTPConflict(text="Stop the agent before changing its settings.")
@@ -151,6 +181,7 @@ async def cleanup(_: web.Application) -> None:
 app = web.Application()
 app.router.add_get("/", index)
 app.router.add_get("/api/state", get_state)
+app.router.add_post("/api/setup", save_setup)
 app.router.add_post("/api/settings", save_settings)
 app.router.add_post("/api/start", start_agent)
 app.router.add_post("/api/stop", stop_agent)

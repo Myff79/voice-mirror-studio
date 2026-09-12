@@ -11,11 +11,11 @@ Private keys and conversation transcripts are deliberately excluded from Git.
 
 1. Install [uv](https://docs.astral.sh/uv/getting-started/installation/).
 2. Download or clone this repository.
-3. Copy `student-settings.example.env` to `student-settings.env`.
-4. Add your Gradium API key and voice ID.
-5. Add your LiveKit project URL, API key, and API secret.
-6. On macOS, double-click `Start Workshop Studio.command`.
-7. Open `http://127.0.0.1:8765` if the page does not open automatically.
+3. On macOS, double-click `Start Workshop Studio.command`.
+4. Complete the one-time account setup in the page that opens.
+
+The Studio creates `student-settings.env` automatically. Students can instead
+copy `student-settings.example.env` and fill it manually if needed.
 
 You can also start it from Terminal:
 
@@ -29,6 +29,9 @@ uv run python workshop_ui.py
 The local browser page lets students edit the character personality, select a
 Gradium voice ID, start or stop the conversation, and read the transcript. The
 API keys remain only in `student-settings.env` on the student's computer.
+
+Coding assistants can use `AGENTS.md` for safe, project-specific setup and
+troubleshooting guidance.
 
 ## Change the personality
 
